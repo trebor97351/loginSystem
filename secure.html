@@ -1,0 +1,164 @@
+<html>
+<head>
+<style>
+#people {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+#people td, #people th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+#people tr:nth-child(even){background-color: #f2f2f2;}
+
+#people tr:hover {background-color: #ddd;}
+
+#people th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #4CAF50;
+    color: white;
+}
+</style>
+<?php
+if(isset($_GET["allreadyExists"])){
+	echo '<script>alert("Press a button!");window.location =(window.location.pathname);</script>';
+}
+?>
+</head>
+<body>
+
+
+<?php
+$file = "people.csv";
+
+
+function encrypt_decrypt($action, $string) {
+    $output = false;
+    $encrypt_method = "AES-256-CBC";
+    $secret_key = "";
+    $secret_iv = "";
+    // hash
+    $key = hash('sha256', $secret_key);
+    
+    // iv - encrypt method AES-256-CBC expects 16 bytes - else you will get a warning
+    $iv = substr(hash('sha256', $secret_iv), 0, 16);
+    if ( $action == 'encrypt' ) {
+        $output = openssl_encrypt($string, $encrypt_method, $key, 0, $iv);
+        $output = base64_encode($output);
+    } else if( $action == 'decrypt' ) {
+        $output = openssl_decrypt(base64_decode($string), $encrypt_method, $key, 0, $iv);
+    }
+    return $output;
+}
+function editUserdata($data, $file){
+	$searchfor = $data[1];
+	$contents = file_get_contents($file);
+	$pattern = preg_quote($searchfor, '/');
+	$pattern = "/^.*$pattern.*\$/m";
+	$lines = explode("\n", $contents);
+	foreach ($lines as $line){
+		$linesDrecryped[] = encrypt_decrypt("decrypt", $line);
+	}
+	$contents = implode(",",$linesDrecryped);
+	// finalise the regular expression, matching the whole line
+	if (preg_match_all($pattern, $contents, $matches)) {
+		echo "<p>that user allready exists</p><br>";
+		header('Location: '.$_SERVER['PHP_SELF']."?allreadyExists=True");
+	} else {
+		$stringData = implode (",", $data);
+		$fh = fopen($file, 'a') or die("can't open file");
+		fwrite($fh, "\n".encrypt_decrypt("encrypt", $stringData));
+		fclose($fh);
+		header('Location: '.$_SERVER['PHP_SELF']);
+	}
+	die;
+}
+function removeLine($line,$file){
+	$fileData = file($file); // Read the whole file into an array
+
+	//Delete the recorded line
+	unset($fileData[$line-1]);
+
+	//Recorded in a file
+	file_put_contents($file, rtrim(implode("", $fileData)));
+	header('Location: '.$_SERVER['PHP_SELF']);
+	die;
+}
+$name = $_POST["name"];
+$email = $_POST["email"];
+$status = $_POST["status"];
+$phone = $_POST["phone"];
+$mobile = $_POST["mobile"];
+$id = $_POST["id"];
+if (isset($email)){
+	$data = ['"'.$name.'"','"'.$email.'"','"'.$status.'"','"'.$phone.'"','"'.$mobile.'"'];
+	editUserdata($data, $file);
+}
+if (isset($id)){
+	removeLine($id,$file);
+}
+
+$fileContents = file_get_contents($file);
+$lines = explode("\n", $fileContents);
+$id = 0;
+foreach ($lines as $line){
+	$linesDrecryped[] = encrypt_decrypt("decrypt", $line);
+}
+foreach ($linesDrecryped as $line) {
+    $linesCsv[] = str_getcsv($line);
+}
+echo "<center>\n\t<table id='people' style='width:80%'>\n";
+echo <<<END
+		<tr>
+			<th>Name</th>
+			<th>Email</th>
+			<th>Status</th>
+			<th>Phone</th>
+			<th>Mobile</th>
+			<th>ID</th>
+		</tr>
+END;
+foreach ($linesCsv as $line){
+	$id += 1;
+	echo "\t\t<tr>\n";
+	foreach ($line as $cell){
+		echo "\t\t\t<td>" . htmlspecialchars($cell) . "</td>\n";
+	}
+	echo "\t\t\t<td> ". ($id) ."</td>\n";
+	echo "\t\t</tr>\n";
+}
+echo "\t</table>\n";
+
+
+
+?>
+
+	<h3>
+		Add a user!!!
+	</h3>
+	<form action="" method="post">
+		<input name="name" type="text" placeholder="name" required><br>
+		<input name="email" type="text" placeholder="email" required><br>
+		<input name="status" type="text" placeholder="status"><br>
+		<input name="phone" type="text" placeholder="phone"><br>
+		<input name="mobile" type="text" placeholder="mobile"><br>
+		<input type="submit">
+	</form>
+	<h1>
+		<br>
+	</h1>
+	<h3>
+		Remove a user!!!
+	</h3>
+	<form action="" method="post">
+		<input name="id" type="number" placeholder="user ID" min="0">
+		<input type="submit">
+	</form>
+</center>
+</body>
+</html>

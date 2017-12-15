@@ -1,0 +1,19 @@
+<?php
+$conf = include('config.php');
+if (!isset($_COOKIE["authCode"])) {
+    if ($_COOKIE["authCode"] == $conf[auth]) {
+        
+    }
+    else {
+        header('Location: /members/login.php');
+        echo "If you are seeing this message, you should have been redirected. Make sure your browser supports redirects or <a href='/members/login.php'>click here</a>.";
+        die();
+    }
+}
+?>
+<center>
+<h1>Home</h1>
+<br>
+<p>Lorem Ipsum Dolor Sit Amet</p><br>
+<a href="/members/secure.html">Contact Information</a>
+</center>
